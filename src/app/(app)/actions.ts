@@ -150,3 +150,17 @@ export async function clockOut(pause: boolean): Promise<SaveResult> {
   revalidatePath('/', 'layout');
   return { ok: true };
 }
+
+/** Nur die Kommen-Uhrzeit eines offenen Tages ändern, der Tag läuft weiter */
+export async function correctClockIn(time: string): Promise<SaveResult> {
+  const { supabase } = await getSession();
+  if (!isTime(time)) return { ok: false, error: 'Bitte eine Uhrzeit wählen.' };
+  const today = todayBerlin();
+  const { data: e } = await supabase.from('time_entries').select('start_time, end_time, kind').eq('work_date', today).maybeSingle();
+  if (!e || e.kind !== 'arbeit' || e.end_time) return { ok: false, error: 'Heute ist kein offener „Kommen“-Eintrag da.' };
+  if (time > nowBerlinHM()) return { ok: false, error: 'Die Kommen-Zeit kann nicht in der Zukunft liegen.' };
+  const { error } = await supabase.from('time_entries').update({ start_time: time }).eq('work_date', today);
+  if (error) return { ok: false, error: 'Speichern hat nicht geklappt. Bitte nochmal versuchen.' };
+  revalidatePath('/', 'layout');
+  return { ok: true };
+}

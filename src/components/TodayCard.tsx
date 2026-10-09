@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
-import { clockIn, clockOut } from '@/app/(app)/actions';
+import { clockIn, clockOut, correctClockIn } from '@/app/(app)/actions';
 import { DayEditor } from './DayEditor';
 import { fmtHM, hhmm, isOpen, KIND_LABEL, nowBerlinHM, timeToMin, type Entry } from '@/lib/zeit';
 
@@ -33,7 +33,8 @@ function useSince(start: string | null) {
 }
 
 export function TodayCard({ date, title, entry, target, actual, defaultBreak, suggest }: Props) {
-  const [mode, setMode] = useState<'stempel' | 'hand'>('stempel');
+  const [mode, setMode] = useState<'stempel' | 'hand' | 'kommen'>('stempel');
+  const [kommen, setKommen] = useState(hhmm(entry?.start_time));
   const [pause, setPause] = useState(suggest?.pause ?? true);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -47,6 +48,39 @@ export function TodayCard({ date, title, entry, target, actual, defaultBreak, su
       if (!res.ok) setError(res.error ?? 'Das hat nicht geklappt.');
     });
   };
+
+  // ── Nur die Kommen-Zeit korrigieren ──
+  if (mode === 'kommen' && open) {
+    return (
+      <section className="card form" aria-label="Kommen-Zeit korrigieren">
+        <div>
+          <div className="label">{title}</div>
+          <div style={{ fontSize: 22, fontWeight: 800 }}>Kommen-Zeit korrigieren</div>
+        </div>
+        <div className="field">
+          <label htmlFor="kommen-zeit">Gekommen um</label>
+          <input id="kommen-zeit" type="time" className="input" value={kommen} onChange={(e) => setKommen(e.target.value)} step={300} />
+        </div>
+        {error && <div className="error" role="alert">{error}</div>}
+        <button
+          className="btn btn-block"
+          disabled={pending || !kommen}
+          onClick={() =>
+            run(async () => {
+              const res = await correctClockIn(kommen);
+              if (res.ok) setMode('stempel');
+              return res;
+            })
+          }
+        >
+          {pending ? 'Speichert…' : 'Speichern'}
+        </button>
+        <button className="btn btn-ghost btn-sm" onClick={() => { setError(null); setMode('stempel'); }}>
+          Abbrechen
+        </button>
+      </section>
+    );
+  }
 
   // ── Von Hand eintragen oder ändern ──
   if (mode === 'hand') {
@@ -119,7 +153,7 @@ export function TodayCard({ date, title, entry, target, actual, defaultBreak, su
           <span className="clock-sub">Feierabend um {nowBerlinHM()}</span>
         </button>
         {error && <div className="error" role="alert">{error}</div>}
-        <button className="btn btn-ghost btn-sm" onClick={() => setMode('hand')}>
+        <button className="btn btn-ghost btn-sm" onClick={() => { setKommen(hhmm(entry.start_time)); setMode('kommen'); }}>
           Kommen-Zeit korrigieren
         </button>
       </section>
