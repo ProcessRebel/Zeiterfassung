@@ -37,7 +37,7 @@ Die Rechenregeln stehen in `src/lib/zeit.ts` und werden mit `npm test` geprüft.
 
 ### 2. Vercel
 
-1. Auf [vercel.com](https://vercel.com) mit GitHub anmelden → **Add New → Project** → Repo `zeitkonto` importieren.
+1. Auf [vercel.com](https://vercel.com) mit GitHub anmelden → **Add New → Project** → Repo `Zeiterfassung` importieren.
 2. Unter **Environment Variables** eintragen:
    - `NEXT_PUBLIC_SUPABASE_URL` = Project URL
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = anon/publishable Key
