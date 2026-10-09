@@ -6,7 +6,7 @@ Arbeitszeiten eintragen und das Überstundenkonto im Blick behalten. Gebaut als 
 
 | Bereich | Was geht |
 | --- | --- |
-| **Heute** | Überstundenkonto groß oben, heutigen Tag eintragen (Von, Bis, „Pause gemacht“), Wochenübersicht |
+| **Heute** | Großer Knopf **Kommen** / **Gehen** (Uhrzeit setzt der Server), beim Gehen „Pause gemacht“ an oder aus. Darunter das Überstundenkonto und die Woche. Von Hand eintragen geht weiterhin. |
 | **Monat** | Alle Tage eines Monats, fehlende Tage gelb markiert. Antippen, eintragen, „Speichern & nächster Tag“. Die Zeiten vom Vortag sind vorausgefüllt. |
 | **Nachtragen** | Springt automatisch zum ersten fehlenden Tag seit dem Startdatum und arbeitet sich Tag für Tag und Monat für Monat durch |
 | **Arten** | Arbeit · Urlaub · Krank · Frei (Ü) = freier Tag aus dem Überstundenkonto |
@@ -32,6 +32,7 @@ Die Rechenregeln stehen in `src/lib/zeit.ts` und werden mit `npm test` geprüft.
 
 1. Auf [supabase.com](https://supabase.com) ein **neues** Projekt anlegen (nicht das von Schneggo), Region **Frankfurt (eu-central-1)**.
 2. **SQL Editor** → **New query** → den kompletten Inhalt von [`supabase/migrations/0001_zeitkonto.sql`](supabase/migrations/0001_zeitkonto.sql) einfügen → **Run**.
+   Danach genauso mit [`0002_stempeln.sql`](supabase/migrations/0002_stempeln.sql) (Kommen/Gehen).
 3. **Authentication → Sign In / Providers → Email**: aktiviert lassen. „Confirm email“ kann aus bleiben, dann kann sich Natascha sofort anmelden.
 4. **Project Settings → API** (oder oben **Connect**): `Project URL` und den `anon`/`publishable` Key kopieren.
 
@@ -79,7 +80,7 @@ person,date,type,start,end,break_minutes,worked_minutes,target_minutes,balance_m
 ```
 
 - `type`: `arbeit`, `urlaub`, `krank`, `ausgleich` (freier Tag aus dem Überstundenkonto); die letzte Zeile `uebertrag` enthält den Startsaldo.
-- `source`: `nachtrag` (vom Zettel übertragen) oder `laufend` (am selben Tag eingetragen). So bleibt erkennbar, welche Werte rekonstruiert sind.
+- `source`: `stempel` (per Kommen/Gehen), `laufend` (am selben Tag von Hand) oder `nachtrag` (vom Zettel übertragen). So bleibt erkennbar, welche Werte rekonstruiert sind.
 
 Fast jedes System (Personio, clockin, Papershift, ZEP …) importiert Datum, Beginn, Ende und Pause. Den Startsaldo trägt man dort meist einmal von Hand ein.
 

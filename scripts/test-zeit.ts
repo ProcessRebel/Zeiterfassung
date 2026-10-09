@@ -1,6 +1,6 @@
 // Prüft die Rechenlogik: npm test
 import assert from 'node:assert/strict';
-import { actualFor, holidays, summarize, targetFor, vacationFor, fmtHM, type Entry, type Profile } from '../src/lib/zeit.ts';
+import { isOpen, actualFor, holidays, summarize, targetFor, vacationFor, fmtHM, type Entry, type Profile } from '../src/lib/zeit.ts';
 
 const p: Profile = {
   name: 'Test',
@@ -55,5 +55,13 @@ assert.deepEqual(v, { year: 2026, entitlement: 32, used: 1, planned: 0, left: 31
 assert.equal(fmtHM(754), '12:34');
 assert.equal(fmtHM(-30), '−0:30');
 assert.equal(fmtHM(90, true), '+1:30');
+
+// Offener Tag (Kommen ohne Gehen) zählt nicht und fehlt auch nicht
+const withOpen = [...entries, { work_date: '2026-01-09', kind: 'arbeit' as const, start_time: '08:00', end_time: null, break_min: 0, note: '' }];
+const s2 = summarize(withOpen, p, '2026-01-09');
+assert.equal(s2.balance, -30);
+assert.deepEqual(s2.openDays, ['2026-01-09']);
+assert.deepEqual(s2.missingDays, ['2026-01-08']);
+assert.equal(isOpen(withOpen[withOpen.length - 1]), true);
 
 console.log('Alle Rechentests bestanden.');

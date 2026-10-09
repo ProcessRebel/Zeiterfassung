@@ -11,7 +11,7 @@ export type Entry = {
   end_time: string | null;
   break_min: number;
   note: string;
-  source?: 'laufend' | 'nachtrag';
+  source?: 'laufend' | 'nachtrag' | 'stempel';
 };
 
 export type Profile = {
@@ -171,6 +171,16 @@ export function targetFor(iso: string, p: Pick<Profile, 'workdays' | 'daily_targ
   return p.daily_target_min;
 }
 
+/** Eingestempelt, aber noch nicht ausgestempelt */
+export function isOpen(e: Entry | null | undefined) {
+  return !!e && e.kind === 'arbeit' && !!e.start_time && !e.end_time;
+}
+
+/** Jetzt in München als "HH:MM" */
+export function nowBerlinHM(now = new Date()) {
+  return new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit', hour12: false }).format(now);
+}
+
 /** Gearbeitete bzw. angerechnete Minuten eines Eintrags */
 export function actualFor(e: Entry, target: number) {
   if (e.kind === 'urlaub' || e.kind === 'krank') return target; // zählt wie ein normaler Tag
@@ -189,13 +199,15 @@ export type DayRow = {
   actual: number | null; // null = kein Eintrag
   diff: number | null;
   missing: boolean; // Arbeitstag in der Vergangenheit ohne Eintrag
+  open: boolean; // gekommen, aber noch nicht gegangen
   beforeStart: boolean;
   future: boolean;
 };
 
 export function dayRow(date: string, entry: Entry | null, p: Profile, today: string): DayRow {
   const target = targetFor(date, p);
-  const actual = entry ? actualFor(entry, target) : null;
+  const open = isOpen(entry);
+  const actual = entry && !open ? actualFor(entry, target) : null;
   const beforeStart = date < p.start_date;
   const future = date > today;
   return {
@@ -206,6 +218,7 @@ export function dayRow(date: string, entry: Entry | null, p: Profile, today: str
     actual,
     diff: actual === null ? null : actual - target,
     missing: !entry && target > 0 && !beforeStart && !future,
+    open,
     beforeStart,
     future,
   };
@@ -215,6 +228,7 @@ export type Summary = {
   balance: number; // Überstundenkonto inkl. Übertrag, bis heute
   fromEntries: number; // nur aus den Einträgen
   missingDays: string[];
+  openDays: string[]; // Kommen ohne Gehen (vor heute = vergessen)
   entered: number;
   firstMissing: string | null;
 };
@@ -225,10 +239,13 @@ export function summarize(entries: Entry[], p: Profile, today: string): Summary 
   let fromEntries = 0;
   let entered = 0;
   const missingDays: string[] = [];
+  const openDays: string[] = [];
   for (let d = p.start_date; d <= today; d = addDays(d, 1)) {
     const e = byDate.get(d);
     const target = targetFor(d, p);
-    if (e) {
+    if (isOpen(e)) {
+      openDays.push(d); // zählt erst nach "Gehen"
+    } else if (e) {
       fromEntries += actualFor(e, target) - target;
       entered++;
     } else if (target > 0) {
@@ -239,6 +256,7 @@ export function summarize(entries: Entry[], p: Profile, today: string): Summary 
     balance: p.start_balance_min + fromEntries,
     fromEntries,
     missingDays,
+    openDays,
     entered,
     firstMissing: missingDays[0] ?? null,
   };

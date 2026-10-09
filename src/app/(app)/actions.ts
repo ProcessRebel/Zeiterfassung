@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/data';
-import { timeToMin, todayBerlin, type Kind } from '@/lib/zeit';
+import { nowBerlinHM, timeToMin, todayBerlin, type Kind } from '@/lib/zeit';
 
 export type SaveResult = { ok: true } | { ok: false; error: string };
 
@@ -110,4 +110,43 @@ export async function saveSettings(_: SettingsState, form: FormData): Promise<Se
   revalidatePath('/', 'layout');
   if (form.get('first') === '1') redirect('/monat?nachtragen=1');
   return { saved: true };
+}
+
+// ───────────── Kommen / Gehen ─────────────
+// Die Uhrzeit nimmt der Server (München), nicht das Handy.
+
+export async function clockIn(): Promise<SaveResult> {
+  const { supabase, userId, profile } = await getSession();
+  const today = todayBerlin();
+  if (today < profile.start_date) return { ok: false, error: 'Heute liegt vor dem Startdatum in den Einstellungen.' };
+  const { data: existing } = await supabase.from('time_entries').select('id').eq('work_date', today).maybeSingle();
+  if (existing) return { ok: false, error: 'Für heute gibt es schon einen Eintrag. Du kannst ihn über „Ändern“ anpassen.' };
+  const { error } = await supabase.from('time_entries').insert({
+    user_id: userId,
+    work_date: today,
+    kind: 'arbeit',
+    start_time: nowBerlinHM(),
+    end_time: null,
+    break_min: 0,
+    source: 'stempel',
+  });
+  if (error) return { ok: false, error: 'Kommen hat nicht geklappt. Bitte nochmal versuchen.' };
+  revalidatePath('/', 'layout');
+  return { ok: true };
+}
+
+export async function clockOut(pause: boolean): Promise<SaveResult> {
+  const { supabase, profile } = await getSession();
+  const today = todayBerlin();
+  const { data: e } = await supabase.from('time_entries').select('start_time, end_time, kind').eq('work_date', today).maybeSingle();
+  if (!e || e.kind !== 'arbeit' || !e.start_time || e.end_time) return { ok: false, error: 'Heute ist kein offener „Kommen“-Eintrag da.' };
+  const end = nowBerlinHM();
+  const s = timeToMin(e.start_time)!;
+  const en = timeToMin(end)!;
+  if (en <= s) return { ok: false, error: 'Gehen geht frühestens eine Minute nach Kommen.' };
+  const brk = pause && en - s > profile.default_break_min ? profile.default_break_min : 0;
+  const { error } = await supabase.from('time_entries').update({ end_time: end, break_min: brk }).eq('work_date', today);
+  if (error) return { ok: false, error: 'Gehen hat nicht geklappt. Bitte nochmal versuchen.' };
+  revalidatePath('/', 'layout');
+  return { ok: true };
 }

@@ -30,7 +30,7 @@ export default async function HomePage() {
   const todayRow = dayRow(today, byDate.get(today) ?? null, profile, today);
 
   // Vorschlag für neue Einträge: die Zeiten vom letzten Arbeitstag
-  const lastWork = [...entries].reverse().find((e) => e.kind === 'arbeit');
+  const lastWork = [...entries].reverse().find((e) => e.kind === 'arbeit' && e.end_time);
   const suggest = lastWork ? { start: hhmm(lastWork.start_time), end: hhmm(lastWork.end_time), pause: lastWork.break_min > 0 } : null;
 
   const mon = weekStart(today);
@@ -52,6 +52,16 @@ export default async function HomePage() {
         </div>
       </div>
 
+      <TodayCard
+        date={today}
+        title={title}
+        entry={todayRow.entry}
+        target={todayRow.target}
+        actual={todayRow.actual}
+        defaultBreak={profile.default_break_min}
+        suggest={suggest}
+      />
+
       <section className="balance" aria-label="Überstundenkonto">
         <div className="label">Überstundenkonto heute</div>
         <div className={`big ${tone}`}>{fmtHM(sum.balance, true)}</div>
@@ -65,6 +75,17 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {sum.openDays.filter((d) => d < today).map((d) => (
+        <Link key={d} href={`/monat?m=${monthKey(d)}&tag=${d}`} className="note" style={{ background: 'var(--minus-tint)', color: '#7a2a18' }}>
+          <span>
+            <strong>Gehen vergessen am {dateDE(d)}</strong>
+            <br />
+            <span className="small">Bitte die Uhrzeit nachtragen, sonst zählt der Tag nicht.</span>
+          </span>
+          <span className="btn btn-sm" style={{ background: 'var(--minus)' }}>Nachtragen</span>
+        </Link>
+      ))}
+
       {sum.missingDays.length > 0 && (
         <Link href={`/monat?m=${monthKey(sum.firstMissing!)}&nachtragen=1`} className="note">
           <span>
@@ -76,15 +97,6 @@ export default async function HomePage() {
         </Link>
       )}
 
-      <TodayCard
-        date={today}
-        title={title}
-        entry={todayRow.entry}
-        target={todayRow.target}
-        actual={todayRow.actual}
-        defaultBreak={profile.default_break_min}
-        suggest={suggest}
-      />
 
       <div className="h2">Diese Woche</div>
       <section className="card form" aria-label="Diese Woche">

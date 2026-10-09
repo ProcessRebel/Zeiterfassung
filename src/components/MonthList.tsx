@@ -13,9 +13,10 @@ type Props = {
   backfill: boolean;
   lastWorkBefore: Record<string, { start: string; end: string; pause: boolean } | null>;
   nextMissingAfterMonth: string | null; // erster fehlender Tag nach diesem Monat
+  today: string;
 };
 
-export function MonthList({ month, rows, defaultBreak, initialOpen, backfill, lastWorkBefore, nextMissingAfterMonth }: Props) {
+export function MonthList({ month, rows, defaultBreak, initialOpen, backfill, lastWorkBefore, nextMissingAfterMonth, today: todayISO }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState<string | null>(initialOpen);
   const [lastDraft, setLastDraft] = useState<Entry | null>(null);
@@ -69,14 +70,16 @@ export function MonthList({ month, rows, defaultBreak, initialOpen, backfill, la
         const e = r.entry;
         const weekendEmpty = r.target === 0 && !e && !r.holiday;
         let what: React.ReactNode;
-        if (e) what = e.kind === 'arbeit' ? `${hhmm(e.start_time)}–${hhmm(e.end_time)}${e.break_min > 0 ? '' : ' · ohne Pause'}` : KIND_SHORT[e.kind];
+        if (r.open) what = r.future || r.date === todayISO ? `seit ${hhmm(e!.start_time)} da` : `${hhmm(e!.start_time)}–? · Gehen fehlt`;
+        else if (e) what = e.kind === 'arbeit' ? `${hhmm(e.start_time)}–${hhmm(e.end_time)}${e.break_min > 0 ? '' : ' · ohne Pause'}` : KIND_SHORT[e.kind];
         else if (r.holiday) what = r.holiday;
         else if (r.missing) what = 'fehlt noch';
         else if (r.target === 0) what = '';
         else what = '';
 
         let pill: React.ReactNode = null;
-        if (r.diff !== null) pill = <span className={`pill ${r.diff > 0 ? 'plus' : r.diff < 0 ? 'minus' : 'zero'}`}>{fmtHM(r.diff, true)}</span>;
+        if (r.open) pill = <span className={`pill ${r.date === todayISO ? 'kind' : 'minus'}`}>{r.date === todayISO ? 'läuft' : 'offen'}</span>;
+        else if (r.diff !== null) pill = <span className={`pill ${r.diff > 0 ? 'plus' : r.diff < 0 ? 'minus' : 'zero'}`}>{fmtHM(r.diff, true)}</span>;
         else if (r.holiday) pill = <span className="pill hol">Feiertag</span>;
         else if (r.missing) pill = <span className="pill miss">offen</span>;
 

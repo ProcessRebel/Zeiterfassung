@@ -28,12 +28,12 @@ export default async function MonthPage({ searchParams }: { searchParams: Search
   let last: { start: string; end: string; pause: boolean } | null = null;
   for (const e of entries) {
     if (e.work_date >= `${month}-01`) break;
-    if (e.kind === 'arbeit') last = { start: hhmm(e.start_time), end: hhmm(e.end_time), pause: e.break_min > 0 };
+    if (e.kind === 'arbeit' && e.end_time) last = { start: hhmm(e.start_time), end: hhmm(e.end_time), pause: e.break_min > 0 };
   }
   for (const r of rows) {
     lastWorkBefore[r.date] = last;
     const e = r.entry;
-    if (e && e.kind === 'arbeit') last = { start: hhmm(e.start_time), end: hhmm(e.end_time), pause: e.break_min > 0 };
+    if (e && e.kind === 'arbeit' && e.end_time) last = { start: hhmm(e.start_time), end: hhmm(e.end_time), pause: e.break_min > 0 };
   }
 
   const monthEnd = rows[rows.length - 1].date;
@@ -101,6 +101,7 @@ export default async function MonthPage({ searchParams }: { searchParams: Search
         backfill={backfill}
         lastWorkBefore={lastWorkBefore}
         nextMissingAfterMonth={nextMissingAfterMonth}
+        today={today}
       />
     </main>
   );
